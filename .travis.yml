@@ -1,0 +1,53 @@
+sudo: required
+
+# Installing Docker
+services:
+  - docker
+
+before_install:
+  #Building node_server development docker container
+  - docker build -t pavanleton/shoppy -f ./server/node_server/Dockerfile.dev ./server/node_server
+
+script:
+  # Executing node_server test cases inside container
+  - docker run -e CI=true pavanleton/shoppy npm run test -- --coverage
+
+after_success:
+  # Build production docker images
+  - docker build -t pavanleton/shoppy-client ./client
+  - docker build -t pavanleton/shoppy-nginx ./nginx
+  - docker build -t pavanleton/shoppy-nodeserver ./server/node_server
+  - docker build -t pavanleton/shoppy-pythonserver ./server/python_server
+
+  # Log in to the docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+
+  # Take those images and push them to docker hub
+  - docker push pavanleton/shoppy-client
+  - docker push pavanleton/shoppy-nginx
+  - docker push pavanleton/shoppy-nodeserver
+  - docker push pavanleton/shoppy-pythonserver
+
+  # send notification to discord
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh success $WEBHOOK_URL
+
+after_failure:
+  # send notification to discord
+  - wget https://raw.githubusercontent.com/DiscordHooks/travis-ci-discord-webhook/master/send.sh
+  - chmod +x send.sh
+  - ./send.sh failure $WEBHOOK_URL
+
+deploy:
+  # deploy to AWS Beanstalk
+  provider: elasticbeanstalk
+  region: ap-south-1
+  app: shoppy
+  env: Shoppy-env-1
+  bucket_name: elasticbeanstalk-ap-south-1-701994403871
+  bucket_path: shoppy
+  on:
+    branch: main
+  access_key_id: $AWS_ACCESS_KEY
+  secret_access_key: "$AWS_SECRET_KEY"

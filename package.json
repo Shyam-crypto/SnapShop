@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "setup_shoppy": "concurrently \"cd server && cd node_server && npm i\" \"cd client && npm i\"",
+    "shoppy": "concurrently \"cd server && cd node_server && npm run dev\" \"cd client && npm start\"",
+    "install_shoppy": "npm i && npm run setup_shoppy"
+  },
+  "devDependencies": {
+    "concurrently": "*"
+  }
+}
